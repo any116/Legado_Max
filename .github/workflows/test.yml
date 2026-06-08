@@ -43,9 +43,14 @@ jobs:
       updateLog_content: ${{ steps.updateLog.outputs.body }}
       build_matrix: ${{ steps.set-matrix.outputs.build_matrix }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 20
+      - name: Delete Old Workflows
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          retain_days: 0
+          keep_minimum_runs: 0
       - id: set-ver
         run: |
           echo "version=$(date -d "8 hour" -u +3.%y.%m%d%H)" >> $GITHUB_OUTPUT
@@ -163,7 +168,7 @@ jobs:
           java-version: 17
 
       - name: Cache Gradle Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -196,6 +201,8 @@ jobs:
         run: |
           if [ "${{ env.type }}" == 'release' ]; then
             typeName="原包名"
+            sed "s/'.release'/'.vi'/" $GITHUB_WORKSPACE/app/build.gradle  -i
+            rm -rf $GITHUB_WORKSPACE/app/google-services.json
             gradleTask="assembleAppMaxRelease"
           elif [ "${{ env.type }}" == 'releaseS' ]; then
             typeName="共存"
@@ -299,26 +306,26 @@ jobs:
 
       - name: Publish Official Release
         if: needs.prepare.outputs.updateLog_updated == 'yes'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: legado_app_${{ env.VERSION }}
           tag_name: ${{ env.VERSION }}
           body: |
             ### 更新内容
-            ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
+            #${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
           prerelease: false
           files: ${{ github.workspace }}/apk/*.apk
           fail_on_unmatched_files: true
 
       - name: Publish Pre-Release
         if: needs.prepare.outputs.updateLog_updated != 'yes'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: legado_app_${{ env.VERSIONL }}
           tag_name: beta-${{ env.VERSIONL }}
           body: |
             ### 更新内容
-            ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
+            #${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
           prerelease: true
           files: ${{ github.workspace }}/apk/*.apk
           fail_on_unmatched_files: true
